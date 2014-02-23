@@ -7,11 +7,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using Npgsql;
 using MultiTenancy;
+using MultiTenancy.PostgreSQL;
 
 namespace UnitTests.Postgres
 {
     #region Unit Test PgContext and Models
-    public class UnitTestPgContext : PostgresMultiTenantContext.PostgresMultiTenantContext
+    public class UnitTestPgContext : PostgresMultiSchemaContext
     {
         public DbSet<Tenant> Tenants { get { return this.Set<Tenant>(); } }
         public DbSet<Location> Locations { get { return this.Set<Location>(); } }

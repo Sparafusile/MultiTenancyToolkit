@@ -1,22 +1,19 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlClient;
 using System.Collections.Generic;
 
-using Npgsql;
-using MultiTenancy;
-
-namespace PostgresMultiTenantContext
+namespace MultiTenancy.SqlServer
 {
-    public abstract class PostgresMultiTenantContext : MultiTenantContext
+    public abstract class SqlServerMultiSchemaContext : MultiSchemaContext
     {
-        private const string TableQuery = @"SELECT table_name AS ""Name"" FROM information_schema.tables WHERE table_schema = '{0}';";
-        private const string SchemaQuery = @"SELECT schema_name AS ""Name"" FROM information_schema.schemata WHERE schema_name NOT IN ( 'pg_toast', 'pg_catalog', 'public', 'information_schema' ) AND schema_name NOT LIKE 'pg_temp_%' AND schema_name noT LIKE 'pg_toast_temp_%';";
-        private const string ColumnQuery = @"SELECT column_name AS ""Name"", data_type AS ""Type"", column_default AS ""Default"", is_nullable = 'YES' AS ""Nullable"", character_maximum_length AS ""Length"", ( SELECT indexname FROM pg_indexes WHERE indexname = 'IX_' || table_schema || '_' || table_name || '_' || column_name LIMIT 1 ) AS ""Index"" FROM information_schema.columns WHERE table_schema = '{0}' AND table_name = '{1}';";
+        protected override string DefaultSchema { get { return "dbo"; } }
+        private const string TableQuery = @"SELECT table_name AS 'Name' FROM information_schema.tables WHERE table_schema = '{0}';";
+        private const string SchemaQuery = @"SELECT sys.schemas.name AS 'Name' FROM sys.all_objects LEFT JOIN sys.schemas ON sys.schemas.schema_id = sys.all_objects.schema_id WHERE sys.all_objects.type = 'u' and sys.schemas.name != 'dbo' GROUP BY sys.schemas.name ORDER BY sys.schemas.name;";
+        private const string ColumnQuery = @"SELECT column_name AS 'Name', data_type AS 'Type', column_default AS 'Default', CAST( CASE is_nullable WHEN 'YES' THEN 1 ELSE 0 END AS BIT ) AS 'Nullable', character_maximum_length AS 'Length', ( SELECT TOP 1 name FROM sys.indexes WHERE name='IX_{0}_{1}_' + column_name ) AS 'Index' FROM information_schema.columns WHERE table_schema = '{0}' AND table_name = '{1}';";
 
-        protected override string DefaultSchema { get { return "public"; } }
-
-        protected PostgresMultiTenantContext( string connection, string schema ) : base( connection, schema, DbVendor.PostgreSql )
+        protected SqlServerMultiSchemaContext( string connection, string schema ) : base( connection, schema, DbVendor.SqlServer )
         {
         }
 
@@ -75,7 +72,7 @@ namespace PostgresMultiTenantContext
             try
             {
                 // Use the connection string already established in the DBContext
-                using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
+                using( var con = new SqlConnection( this.Database.Connection.ConnectionString ) )
                 {
                     this.UpdateDefaultSchema( con, true, true, false );
                 }
@@ -97,7 +94,7 @@ namespace PostgresMultiTenantContext
             try
             {
                 // Use the connection string already established in the DBContext
-                using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
+                using( var con = new SqlConnection( this.Database.Connection.ConnectionString ) )
                 {
                     CreateTenantSchema( con );
                 }
@@ -119,7 +116,7 @@ namespace PostgresMultiTenantContext
             try
             {
                 // Use the connection string already established in the DBContext
-                using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
+                using( var con = new SqlConnection( this.Database.Connection.ConnectionString ) )
                 {
                     UpdateTenantSchemas( con, Create, Update, Delete );
                 }

@@ -39,7 +39,7 @@ namespace MultiTenancy
         public string Clustered { get; set; }
     }
 
-    public abstract partial class MultiTenantContext
+    public abstract partial class MultiSchemaContext
     {
         /// <summary>
         /// Returns the inner type of all DbSet properties on the given class
@@ -55,7 +55,7 @@ namespace MultiTenancy
 
                 // Only the properties that are a generic type of DbSet
                 where p.PropertyType.IsGenericType
-                    && p.PropertyType.GetGenericTypeDefinition() == typeof( DbSet<> )
+                    && p.PropertyType.GetGenericTypeDefinition() == typeof( IDbSet<> )
 
                 // Get the type used to create the generic (T in DbSet<T>)
                 let e = p.PropertyType.GetGenericArguments()[0]
@@ -302,7 +302,7 @@ namespace MultiTenancy
             switch( Vendor )
             {
                 case DbVendor.SqlServer:
-                    return @"CREATE SCHEMA [{0}];";
+                    return @"IF NOT EXISTS ( SELECT * FROM sys.schemas WHERE name = '{0}' ) CREATE SCHEMA [{0}];";
 
                 case DbVendor.PostgreSql:
                     return @"CREATE SCHEMA IF NOT EXISTS ""{0}"";";

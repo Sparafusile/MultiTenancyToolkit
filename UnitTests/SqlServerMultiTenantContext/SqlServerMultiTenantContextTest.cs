@@ -7,11 +7,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using MultiTenancy;
+using MultiTenancy.SqlServer;
 
 namespace UnitTests.SqlServer
 {
     #region Unit Test PgContext and Models
-    public class UnitTestMsContext : SqlServerMultiTenantContext.SqlServerMultiTenantContext
+    public class UnitTestMsContext : SqlServerMultiSchemaContext
     {
         public DbSet<Tenant> Tenants { get { return this.Set<Tenant>(); } }
         public DbSet<Location> Locations { get { return this.Set<Location>(); } }

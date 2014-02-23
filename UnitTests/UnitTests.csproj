@@ -60,6 +60,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="MultiTenancy\SingleSchemaContextTest.cs" />
     <Compile Include="PostgresMultiTenantContext\PostgresMultiTenantContextTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SqlServerMultiTenantContext\SqlServerMultiTenantContextTest.cs" />
@@ -82,9 +83,7 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="MultiTenancy\" />
-  </ItemGroup>
+  <ItemGroup />
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

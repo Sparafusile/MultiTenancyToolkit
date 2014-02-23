@@ -10,18 +10,18 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MultiTenancy
 {
-    public abstract partial class MultiTenantContext : DbContext, IDbModelCacheKeyProvider
+    public abstract partial class MultiSchemaContext : DbContext, IDbModelCacheKeyProvider
     {
         protected DbVendor Vendor { get; set; }
         protected string SchemaName { get; private set; }
         public string CacheKey { get { return this.GetType().Name + "." + this.SchemaName; } }
 
-        static MultiTenantContext()
+        static MultiSchemaContext()
         {
-            Database.SetInitializer<MultiTenantContext>( null );
+            Database.SetInitializer<MultiSchemaContext>( null );
         }
 
-        protected MultiTenantContext( string connection, string SchemaName, DbVendor Vendor ) : base( connection )
+        protected MultiSchemaContext( string connection, string SchemaName, DbVendor Vendor ) : base( connection )
         {
             this.SchemaName = SchemaName;
             this.Vendor = Vendor;
@@ -59,9 +59,14 @@ namespace MultiTenancy
 
             using( var cmd = con.CreateCommand() )
             {
+                if( con.State != ConnectionState.Open ) con.Open();
+
+                // Create the default schema
+                cmd.CommandText = string.Format( GetSchemaCreateString( this.Vendor ), this.DefaultSchema );
+                cmd.ExecuteNonQuery();
+
                 // Alter the default schema
                 cmd.CommandText = string.Format( sql, this.DefaultSchema );
-                if( con.State != ConnectionState.Open ) con.Open();
                 cmd.ExecuteNonQuery();
             }
         }

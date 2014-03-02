@@ -13,10 +13,9 @@ namespace MultiTenancy.PostgreSQL
         private const string SchemaQuery = @"SELECT schema_name AS ""Name"" FROM information_schema.schemata WHERE schema_name NOT IN ( 'pg_toast', 'pg_catalog', 'public', 'information_schema' ) AND schema_name NOT LIKE 'pg_temp_%' AND schema_name noT LIKE 'pg_toast_temp_%';";
         private const string ColumnQuery = @"SELECT column_name AS ""Name"", data_type AS ""Type"", column_default AS ""Default"", is_nullable = 'YES' AS ""Nullable"", character_maximum_length AS ""Length"", ( SELECT indexname FROM pg_indexes WHERE indexname = 'IX_' || table_schema || '_' || table_name || '_' || column_name LIMIT 1 ) AS ""Index"" FROM information_schema.columns WHERE table_schema = '{0}' AND table_name = '{1}';";
 
-        protected override string DefaultSchema { get { return "public"; } }
-
         protected PostgresMultiSchemaContext( string connection, string schema ) : base( connection, schema, DbVendor.PostgreSql )
         {
+            this.DefaultSchema = "public";
         }
 
         protected override List<string> GetSchemaList( DbConnection con )
@@ -38,7 +37,7 @@ namespace MultiTenancy.PostgreSQL
             return list;
         }
 
-        protected override List<string> GetTableList( DbConnection con, string Schema = null )
+        protected override List<string> GetTableList( DbConnection con, string Schema )
         {
             var list = new List<string>();
             using( var cmd = con.CreateCommand() )
@@ -69,14 +68,14 @@ namespace MultiTenancy.PostgreSQL
             }
         }
 
-        public bool UpdatePublicTables()
+        public override bool UpdateSharedTables()
         {
             try
             {
                 // Use the connection string already established in the DBContext
                 using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
                 {
-                    this.UpdateDefaultSchema( con, true, true, false );
+                    this.UpdateSharedTables( con, true, true, false );
                 }
 
                 return true;
@@ -98,7 +97,7 @@ namespace MultiTenancy.PostgreSQL
                 // Use the connection string already established in the DBContext
                 using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
                 {
-                    CreateTenantSchema( con );
+                    CreateTenantTables( con, this.SchemaName );
                 }
 
                 return true;
@@ -120,7 +119,7 @@ namespace MultiTenancy.PostgreSQL
                 // Use the connection string already established in the DBContext
                 using( var con = new NpgsqlConnection( this.Database.Connection.ConnectionString ) )
                 {
-                    UpdateTenantSchemas( con, Create, Update, Delete );
+                    UpdateTenantTables( con, Create, Update, Delete );
                 }
 
                 return true;

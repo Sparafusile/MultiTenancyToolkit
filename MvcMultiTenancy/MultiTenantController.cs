@@ -1,7 +1,11 @@
-﻿namespace MvcMultiTenancy
+﻿using MultiTenancy;
+
+namespace MvcMultiTenancy
 {
     public abstract class MultiTenantController : System.Web.Mvc.Controller
     {
+        protected static ICacheProvider HttpCache = new HttpCacheProvider();
+
         /// <summary>
         /// The current subdomain in the url.
         /// </summary>

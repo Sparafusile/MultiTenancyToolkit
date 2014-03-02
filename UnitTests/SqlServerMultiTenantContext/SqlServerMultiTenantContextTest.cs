@@ -116,7 +116,7 @@ namespace UnitTests.SqlServer
                 cmd.ExecuteNonQuery();
             }
 
-            Assert.IsTrue( db.UpdatePublicTables() );
+            Assert.IsTrue( db.UpdateSharedTables() );
 
             // Create a tenant
             db.Tenants.Add( new Tenant { Name = "Vandelay Industries", SubDomain = "vi" } );

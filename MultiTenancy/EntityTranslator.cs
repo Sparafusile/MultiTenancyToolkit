@@ -3,6 +3,7 @@ using System.Data;
 using System.Text;
 using System.Linq;
 using System.Reflection;
+using System.Data.Common;
 using System.Data.Entity;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -39,14 +40,114 @@ namespace MultiTenancy
         public string Clustered { get; set; }
     }
 
-    public abstract partial class MultiSchemaContext
+    public abstract partial class MultiTenantContext
     {
+        protected string GetUpdateScriptForSchema( DbConnection con, string Schema, List<Type> Entities, bool Create, bool Update, bool Delete )
+        {
+            var sb = new StringBuilder();
+
+            // Find the changes in the tables
+            var existingTableNames = this.GetTableList( con, Schema );
+            var newEntities = Entities.Where( m => !existingTableNames.Contains( GetTableName( m ) ) ).ToList();
+            var newTableNames = newEntities.Select( GetTableName ).ToList();
+
+            if( Create )
+            {
+                // Create the new tables
+                sb.AppendLine( GetTableCreateStrings( this.Vendor, newEntities, existingTableNames ) );
+            }
+
+            if( Delete )
+            {
+                // Delete the tables that no longer have a corresponding entity
+                var deletedTableNames = existingTableNames.Where( m => !Entities.Select( GetTableName ).Contains( m ) );
+                foreach( var t in deletedTableNames )
+                {
+                    sb.AppendLine( GetTableDropString( t, this.Vendor ) );
+                }
+            }
+
+            // Find the changes in the columns
+            foreach( var entity in Entities.Where( m => !newTableNames.Contains( GetTableName( m ) ) ) )
+            {
+                // Get the column information from the reference schema
+                var table = GetTableName( entity );
+
+                // Get the existing column info
+                var columns = this.GetColumnList( con, table, Schema );
+
+                // Get the entity properties
+                var properties = GetEntityProperties( entity ).ToList();
+
+                if( Delete )
+                {
+                    // Drop the columns that are no longer part of the entity
+                    foreach( var column in from c in columns where !properties.Select( GetColumnName ).Contains( c.Name ) select c.Name )
+                    {
+                        sb.AppendLine( GetColumnDropString( table, column, this.Vendor ) );
+                    }
+                }
+
+                foreach( var property in properties )
+                {
+                    var name = GetColumnName( property );
+                    var ec = columns.FirstOrDefault( m => m.Name.Equals( name ) );
+
+                    if( Create && ec == null )
+                    {
+                        // This is a new column
+                        sb.AppendLine( GetColumnAddString( entity, property, this.Vendor ) );
+                    }
+                    else if( Update && ec != null )
+                    {
+                        // String Length
+                        if( ec.Type == typeof( string ) )
+                        {
+                            var stringLength = property.GetAttribute<StringLengthAttribute>();
+                            if( ( stringLength != null && ec.Length != stringLength.MaximumLength ) || ( stringLength == null && ec.Length > 0 ) )
+                            {
+                                // Change the type on the column to reflect the new length
+                                sb.AppendLine( GetColumnChangeTypeString( entity, property, this.Vendor ) );
+                            }
+                        }
+
+                        // Nullable and Default Value
+                        if( ec.Nullable && !IsColumnNullable( property ) )
+                        {
+                            // Add a NOT NULL constraint and default value
+                            sb.AppendLine( GetColumnSetNotNullString( entity, property, this.Vendor ) );
+                        }
+                        else if( !ec.Nullable && IsColumnNullable( property ) )
+                        {
+                            // Remove the NOT NULL constraint and default value
+                            sb.AppendLine( GetColumnDropNotNullString( entity, property, !string.IsNullOrEmpty( ec.Default ), this.Vendor ) );
+                        }
+
+                        // Index
+                        var index = property.GetAttribute<IndexAttribute>();
+                        if( string.IsNullOrEmpty( ec.Index ) && index != null )
+                        {
+                            // Create a new index
+                            sb.AppendLine( GetIndexCreateString( entity, property, this.Vendor ) );
+                        }
+                        else if( !string.IsNullOrEmpty( ec.Index ) && index == null )
+                        {
+                            // Remove the existing index
+                            sb.AppendLine( GetIndexDropString( entity, property, this.Vendor ) );
+                        }
+                    }
+                }
+            }
+
+            return sb.ToString();
+        }
+
         /// <summary>
         /// Returns the inner type of all DbSet properties on the given class
         /// that do not have a specific schema specified. These will be created
         /// in the tenant's schema.
         /// </summary>
-        private static List<Type> GetTenantSchemaEntityTypes( Type T )
+        protected static List<Type> GetTenantSchemaEntityTypes( Type T )
         {
             return
             (
@@ -54,8 +155,12 @@ namespace MultiTenancy
                 from p in T.GetProperties()
 
                 // Only the properties that are a generic type of DbSet
-                where p.PropertyType.IsGenericType
-                    && p.PropertyType.GetGenericTypeDefinition() == typeof( IDbSet<> )
+                where p.PropertyType.IsGenericType &&
+                (
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( DbSet<> ) ||
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( IDbSet<> ) ||
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( FilteredDbSet<> )
+                )
 
                 // Get the type used to create the generic (T in DbSet<T>)
                 let e = p.PropertyType.GetGenericArguments()[0]
@@ -78,7 +183,7 @@ namespace MultiTenancy
         /// that do have a specific schema specified. These will be created
         /// in the default (dbo, public) schema.
         /// </summary>
-        private static List<Type> GetDefaultSchemaEntityTypes( Type T )
+        protected static List<Type> GetDefaultSchemaEntityTypes( Type T )
         {
             return
             (
@@ -137,7 +242,7 @@ namespace MultiTenancy
         /// </summary>
         /// <param name="t">The entity type for which to return the properties.</param>
         /// <returns>A list of PropertyInfo for the given entity.</returns>
-        private static IEnumerable<PropertyInfo> GetEntityProperties( Type t )
+        protected static IEnumerable<PropertyInfo> GetEntityProperties( Type t )
         {
             return t.GetProperties().Where( m => m.CanWrite && m.GetAttribute<NotMappedAttribute>() == null && ( m.PropertyType.IsValueType || m.PropertyType == typeof( string ) ) );
         }
@@ -148,7 +253,7 @@ namespace MultiTenancy
         /// </summary>
         /// <param name="t">The entity type for which to return the table names.</param>
         /// <returns>The list of foreign key tables pointed to by the given entity type.</returns>
-        private static IEnumerable<string> GetForeignKeysForEntity( Type t )
+        protected static IEnumerable<string> GetForeignKeysForEntity( Type t )
         {
             return
             (
@@ -194,7 +299,7 @@ namespace MultiTenancy
         /// <param name="Entities">An option list of entities to create. Default is all</param>
         /// <param name="ExistingTables">A list of existing table names in the schema.</param>
         /// <returns>A string containing all the CREATE TABLE statments need to create the given entities.</returns>
-        private static string GetTableCreateStrings( DbVendor Vendor, ICollection<Type> Entities, List<string> ExistingTables = null )
+        protected static string GetTableCreateStrings( DbVendor Vendor, ICollection<Type> Entities, List<string> ExistingTables = null )
         {
             Type entity;
 
@@ -239,7 +344,7 @@ namespace MultiTenancy
         /// </summary>
         /// <param name="T">The entity type for which to return the table name.</param>
         /// <returns>The table name for the given entity type.</returns>
-        private static string GetTableName( Type T )
+        protected static string GetTableName( Type T )
         {
             var tableAttribute = T.GetAttribute<TableAttribute>();
             return tableAttribute != null ? tableAttribute.Name : null;
@@ -248,7 +353,7 @@ namespace MultiTenancy
         /// <summary>
         /// Returns the column name for the given property.
         /// </summary>
-        private static string GetColumnName( PropertyInfo p )
+        protected static string GetColumnName( PropertyInfo p )
         {
             var name = p.Name;
             var ca = p.GetAttribute<ColumnAttribute>();
@@ -259,13 +364,13 @@ namespace MultiTenancy
             return name;
         }
 
-        private static Type GetColumnType( PropertyInfo P )
+        protected static Type GetColumnType( PropertyInfo P )
         {
             bool temp;
             return GetColumnType( P, out temp );
         }
 
-        private static Type GetColumnType( PropertyInfo P, out bool Nullable )
+        protected static Type GetColumnType( PropertyInfo P, out bool Nullable )
         {
             Nullable = false;
             var type = P.PropertyType;
@@ -280,7 +385,7 @@ namespace MultiTenancy
             return type;
         }
 
-        private static bool IsColumnNullable( PropertyInfo P )
+        protected static bool IsColumnNullable( PropertyInfo P )
         {
             bool isNullable;
             var type = GetColumnType( P, out isNullable );
@@ -297,12 +402,12 @@ namespace MultiTenancy
         /// <summary>
         /// Returns a CREATE SCHEMA statement for the specified vendor.
         /// </summary>
-        private static string GetSchemaCreateString( DbVendor Vendor )
+        protected static string GetSchemaCreateString( DbVendor Vendor )
         {
             switch( Vendor )
             {
                 case DbVendor.SqlServer:
-                    return @"IF NOT EXISTS ( SELECT * FROM sys.schemas WHERE name = '{0}' ) CREATE SCHEMA [{0}];";
+                    return @"IF NOT EXISTS ( SELECT * FROM sys.schemas WHERE name = '{0}' ) EXEC( 'CREATE SCHEMA [{0}]' );";
 
                 case DbVendor.PostgreSql:
                     return @"CREATE SCHEMA IF NOT EXISTS ""{0}"";";
@@ -316,7 +421,7 @@ namespace MultiTenancy
         /// Returns a CREATE TABLE statement for the given entity type
         /// that can be used with the given vendor.
         /// </summary>
-        private static string GetTableCreateString( Type T, DbVendor Vendor )
+        protected static string GetTableCreateString( Type T, DbVendor Vendor )
         {
             switch( Vendor )
             {
@@ -331,7 +436,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetTableDropString( string Name, DbVendor Vendor )
+        protected static string GetTableDropString( string Name, DbVendor Vendor )
         {
             switch( Vendor )
             {
@@ -346,7 +451,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetColumnAddString( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnAddString( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var sb = new StringBuilder();
             var Table = GetTableName( T );
@@ -385,7 +490,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static string GetColumnDropString( string Table, string Name, DbVendor Vendor )
+        protected static string GetColumnDropString( string Table, string Name, DbVendor Vendor )
         {
             switch( Vendor )
             {
@@ -400,7 +505,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetColumnChangeTypeString( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnChangeTypeString( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var Table = GetTableName( T );
 
@@ -417,7 +522,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetColumnSetNotNullString( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnSetNotNullString( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var Table = GetTableName( T );
             var Column = GetColumnName( P );
@@ -500,7 +605,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static string GetColumnDropNotNullString( Type T, PropertyInfo P, bool DropDefault, DbVendor Vendor )
+        protected static string GetColumnDropNotNullString( Type T, PropertyInfo P, bool DropDefault, DbVendor Vendor )
         {
             var sb = new StringBuilder();
             var Table = GetTableName( T );
@@ -537,7 +642,7 @@ namespace MultiTenancy
         /// TABLE or ALTER TABLE ... ADD COLUMN statements for the given
         /// vendor.
         /// </summary>
-        private static string GetColumnType( PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnType( PropertyInfo P, DbVendor Vendor )
         {
             var type = GetColumnType( P );
 
@@ -592,7 +697,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static Type GetNativeType( string DbType )
+        protected static Type GetNativeType( string DbType )
         {
             switch( DbType.ToLower() )
             {
@@ -628,7 +733,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetColumnDefault( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnDefault( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var isNullable = IsColumnNullable( P );
             if( isNullable ) return null;
@@ -686,7 +791,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static string GetColumnDefinition( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetColumnDefinition( Type T, PropertyInfo P, DbVendor Vendor )
         {
             switch( Vendor )
             {
@@ -702,7 +807,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static string GetIndexCreateString( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetIndexCreateString( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var indexAttribute = P.GetAttribute<IndexAttribute>();
             if( indexAttribute == null ) return null;
@@ -729,7 +834,7 @@ namespace MultiTenancy
             }
         }
 
-        private static string GetIndexDropString( Type T, PropertyInfo P, DbVendor Vendor )
+        protected static string GetIndexDropString( Type T, PropertyInfo P, DbVendor Vendor )
         {
             var Table = GetTableName( T );
             var Column = GetColumnName( P );
@@ -746,7 +851,7 @@ namespace MultiTenancy
             return null;
         }
 
-        private static string GetTableCreateStringMS( Type T )
+        protected static string GetTableCreateStringMS( Type T )
         {
             // Get the table name
             var tableName = GetTableName( T );
@@ -781,7 +886,7 @@ namespace MultiTenancy
                 "END;\n\n";
         }
 
-        private static string GetTableCreateStringPG( Type T )
+        protected static string GetTableCreateStringPG( Type T )
         {
             // Get the table name
             var tableName = GetTableName( T );
@@ -816,20 +921,20 @@ namespace MultiTenancy
                 string.Join( "\n", indexes.ToArray() ) + "\n" +
                 "SELECT setval('" + sequenceName + "', 9999, true);";
         }
+    }
 
-        protected class EntityColumn
-        {
-            public string Name { get; set; }
+    public class EntityColumn
+    {
+        public string Name { get; set; }
 
-            public Type Type { get; set; }
+        public Type Type { get; set; }
 
-            public string Default { get; set; }
+        public string Default { get; set; }
 
-            public bool Nullable { get; set; }
+        public bool Nullable { get; set; }
 
-            public int Length { get; set; }
+        public int Length { get; set; }
 
-            public string Index { get; set; }
-        }
+        public string Index { get; set; }
     }
 }

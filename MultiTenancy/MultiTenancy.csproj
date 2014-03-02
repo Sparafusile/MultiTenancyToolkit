@@ -46,7 +46,9 @@
     <Compile Include="EntityTranslator.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="FilteredDbSet.cs" />
+    <Compile Include="ICacheProvider.cs" />
     <Compile Include="MultiSchemaContext.cs" />
+    <Compile Include="MultiTenantContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SingleSchemaContext.cs" />
   </ItemGroup>

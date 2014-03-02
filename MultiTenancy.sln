@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlServerMultiTenantContext
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MvcMultiTenancy", "MvcMultiTenancy\MvcMultiTenancy.csproj", "{F1C40596-C738-45E3-95E1-9D4B08D7EEEC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DbContexts", "DbContexts", "{482046A2-C335-4F35-8D58-091E71C98C40}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,5 +49,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CBA5BDB4-A824-45B0-A65C-D7A0A5D2A7B6} = {482046A2-C335-4F35-8D58-091E71C98C40}
+		{AA5B7EF1-8AEB-4A32-92BF-A82CAF0B752C} = {482046A2-C335-4F35-8D58-091E71C98C40}
 	EndGlobalSection
 EndGlobal

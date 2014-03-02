@@ -15,23 +15,21 @@ namespace MultiTenancy
         // http://www.agile-code.com/blog/entity-framework-code-first-applying-global-filters/
 
         private readonly DbSet<TEntity> Set;
-        private readonly Expression<Func<TEntity, bool>> Filter;
-        public Func<TEntity, bool> MatchesFilter { get; private set; }
+        public Func<TEntity, bool> Filter { get; private set; }
 
         public IQueryable<TEntity> Include( string path )
         {
             return Set.Include( path ).Where( Filter ).AsQueryable();
         }
 
-        public FilteredDbSet( DbContext db, Expression<Func<TEntity, bool>> filter ) : this( db.Set<TEntity>(), filter )
-        {
-        }
-
-        public FilteredDbSet( DbSet<TEntity> set, Expression<Func<TEntity, bool>> filter )
+        public FilteredDbSet( DbSet<TEntity> set, Func<TEntity, bool> filter )
         {
             Set = set;
             Filter = filter;
-            MatchesFilter = filter.Compile();
+        }
+
+        public FilteredDbSet( DbSet<TEntity> set, Expression<Func<TEntity, bool>> filter ) : this( set, filter.Compile() )
+        {
         }
 
         public IQueryable<TEntity> Unfiltered()
@@ -41,7 +39,7 @@ namespace MultiTenancy
 
         public void ThrowIfEntityDoesNotMatchFilter( TEntity entity )
         {
-            if( !MatchesFilter( entity ) ) throw new ArgumentOutOfRangeException();
+            if( !Filter( entity ) ) throw new ArgumentOutOfRangeException();
         }
 
         public TEntity Add( TEntity entity )
@@ -104,7 +102,7 @@ namespace MultiTenancy
         {
             get
             {
-                return Set.Where( Filter ).Expression;
+                return Set.Where( Filter ).AsQueryable().Expression;
             }
         }
 

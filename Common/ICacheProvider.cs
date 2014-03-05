@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MultiTenancy
+namespace MultiTenancy.Common
 {
     public interface ICacheProvider
     {
@@ -12,11 +12,11 @@ namespace MultiTenancy
 
         T Get<T>( string key, TimeSpan span, Func<T> f );
 
-        void Forever( string key, object value );
+        bool Forever<T>( string key, T value );
 
-        void Until( string key, object value, DateTime until );
+        bool Until<T>( string key, T value, DateTime until );
 
-        void Sliding( string key, object value, TimeSpan span );
+        bool Sliding<T>( string key, T value, TimeSpan span );
 
         int Remove( string keyPart );
     }

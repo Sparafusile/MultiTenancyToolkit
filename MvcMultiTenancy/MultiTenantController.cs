@@ -1,4 +1,4 @@
-﻿using MultiTenancy;
+﻿using MultiTenancy.Common;
 
 namespace MvcMultiTenancy
 {

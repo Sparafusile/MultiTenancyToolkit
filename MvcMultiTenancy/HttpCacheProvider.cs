@@ -3,7 +3,7 @@ using System.Web;
 using System.Web.Caching;
 using System.Collections.Generic;
 
-using MultiTenancy;
+using MultiTenancy.Common;
 
 namespace MvcMultiTenancy
 {
@@ -60,19 +60,35 @@ namespace MvcMultiTenancy
             return value == null ? default( T ) : (T)value;
         }
 
-        public void Forever( string key, object value )
+        public bool Forever<T>( string key, T value )
         {
-            Until( key, value, DateTime.Now.AddYears( 1 ) );
+            return Until( key, value, DateTime.Now.AddYears( 1 ) );
         }
 
-        public void Until( string key, object value, DateTime until )
+        public bool Until<T>( string key, T value, DateTime until )
         {
-            HttpRuntime.Cache.Insert( key, value, null, until, Cache.NoSlidingExpiration, CacheItemPriority.Default, null );
+            try
+            {
+                HttpRuntime.Cache.Insert( key, value, null, until, Cache.NoSlidingExpiration, CacheItemPriority.Default, null );
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public void Sliding( string key, object value, TimeSpan span )
+        public bool Sliding<T>( string key, T value, TimeSpan span )
         {
-            HttpRuntime.Cache.Insert( key, value, null, Cache.NoAbsoluteExpiration, span, CacheItemPriority.Default, null );
+            try
+            {
+                HttpRuntime.Cache.Insert( key, value, null, Cache.NoAbsoluteExpiration, span, CacheItemPriority.Default, null );
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public int Remove( string keyPart )

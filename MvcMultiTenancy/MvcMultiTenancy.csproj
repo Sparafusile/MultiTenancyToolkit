@@ -38,11 +38,6 @@
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Mvc, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="System.Web.WebPages, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HttpCacheProvider.cs" />
@@ -51,9 +46,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MultiTenancy\MultiTenancy.csproj">
-      <Project>{45f72973-6cd7-45e8-b651-85eee0667408}</Project>
-      <Name>MultiTenancy</Name>
+    <ProjectReference Include="..\Common\Common.csproj">
+      <Project>{54666106-e968-4151-801f-f393f7e464f3}</Project>
+      <Name>Common %28MultiTenancyToolkit\Common%29</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

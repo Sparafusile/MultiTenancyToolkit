@@ -47,7 +47,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MultiTenancy\MultiTenancy.csproj">
+    <ProjectReference Include="..\..\MultiTenancy\MultiTenancy.csproj">
       <Project>{45f72973-6cd7-45e8-b651-85eee0667408}</Project>
       <Name>MultiTenancy</Name>
     </ProjectReference>

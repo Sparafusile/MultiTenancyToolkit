@@ -66,17 +66,29 @@
     <Compile Include="SqlServerMultiTenantContext\SqlServerMultiTenantContextTest.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CacheProviders\RedisCacheProvider\RedisCacheProvider.csproj">
+      <Project>{24a09b7b-4319-48f7-9e29-404d3ad2d257}</Project>
+      <Name>RedisCacheProvider</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Common\Common.csproj">
+      <Project>{54666106-e968-4151-801f-f393f7e464f3}</Project>
+      <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DbContexts\PostgresMultiTenantContext\PostgresMultiTenantContext.csproj">
+      <Project>{cba5bdb4-a824-45b0-a65c-d7a0a5d2a7b6}</Project>
+      <Name>PostgresMultiTenantContext</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\DbContexts\SqlServerMultiTenantContext\SqlServerMultiTenantContext.csproj">
+      <Project>{aa5b7ef1-8aeb-4a32-92bf-a82caf0b752c}</Project>
+      <Name>SqlServerMultiTenantContext</Name>
+    </ProjectReference>
     <ProjectReference Include="..\MultiTenancy\MultiTenancy.csproj">
       <Project>{45f72973-6cd7-45e8-b651-85eee0667408}</Project>
       <Name>MultiTenancy</Name>
     </ProjectReference>
-    <ProjectReference Include="..\PostgresMultiTenantContext\PostgresMultiTenantContext.csproj">
-      <Project>{cba5bdb4-a824-45b0-a65c-d7a0a5d2a7b6}</Project>
-      <Name>PostgresMultiTenantContext</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SqlServerMultiTenantContext\SqlServerMultiTenantContext.csproj">
-      <Project>{aa5b7ef1-8aeb-4a32-92bf-a82caf0b752c}</Project>
-      <Name>SqlServerMultiTenantContext</Name>
+    <ProjectReference Include="..\MvcMultiTenancy\MvcMultiTenancy.csproj">
+      <Project>{f1c40596-c738-45e3-95e1-9d4b08d7eeec}</Project>
+      <Name>MvcMultiTenancy</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

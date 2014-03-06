@@ -22,11 +22,6 @@ namespace UnitTests.RedisCacheProviderTest
         public UnitTestRedisCacheProvider() : base( "localhost", 6379, null )
         {
         }
-
-        public override void OnProlongedOutage( DateTime OutageStarted, DateTime NextAttempt )
-        {
-            throw new NotImplementedException();
-        }
     }
 
     public class UnitTestMsContext : SqlServerMultiSchemaContext

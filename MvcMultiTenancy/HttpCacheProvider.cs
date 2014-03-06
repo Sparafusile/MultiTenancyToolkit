@@ -7,8 +7,15 @@ using MultiTenancy.Common;
 
 namespace MvcMultiTenancy
 {
-    class HttpCacheProvider : ICacheProvider
+    public class HttpCacheProvider : ICacheProvider
     {
+        private ICacheProvider Backup { get; set; }
+
+        public HttpCacheProvider( ICacheProvider backup = null )
+        {
+            this.Backup = backup ?? new NullCacheProvider();
+        }
+
         private static object Get( string key )
         {
             return HttpRuntime.Cache.Get( key );
@@ -17,7 +24,7 @@ namespace MvcMultiTenancy
         public T Get<T>( string key )
         {
             var value = Get( key );
-            return value == null ? default( T ) : (T)value;
+            return value == null ? this.Backup.Get<T>( key ) : (T)value;
         }
 
         public T Get<T>( string key, Func<T> f )
@@ -41,7 +48,7 @@ namespace MvcMultiTenancy
 
             if( value == null )
             {
-                value = f.Invoke();
+                value = this.Backup.Get( key, f );
 
                 if( until.HasValue )
                 {
@@ -70,6 +77,7 @@ namespace MvcMultiTenancy
             try
             {
                 HttpRuntime.Cache.Insert( key, value, null, until, Cache.NoSlidingExpiration, CacheItemPriority.Default, null );
+                this.Backup.Until( key, value, until );
                 return true;
             }
             catch
@@ -83,6 +91,7 @@ namespace MvcMultiTenancy
             try
             {
                 HttpRuntime.Cache.Insert( key, value, null, Cache.NoAbsoluteExpiration, span, CacheItemPriority.Default, null );
+                this.Backup.Sliding( key, value, span );
                 return true;
             }
             catch
@@ -108,6 +117,8 @@ namespace MvcMultiTenancy
             {
                 HttpRuntime.Cache.Remove( key );
             }
+
+            this.Backup.Remove( keyPart );
 
             return keys.Count;
         }

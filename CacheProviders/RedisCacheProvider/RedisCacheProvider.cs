@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Configuration;
-using System.Globalization;
 using System.Linq;
 using MultiTenancy.Common;
 using ServiceStack.Redis;
 
-namespace RedisCacheProvider
+namespace RedisProvider
 {
     public abstract class RedisCacheProvider : ICacheProvider
     {
-        #region private
         private const string KeySetUrn = "urn:rediscacheprovider:keyset";
         private IRedisClientsManager ClientManager { get; set; }
 
@@ -64,11 +61,8 @@ namespace RedisCacheProvider
                     break;
             }
         }
-        #endregion
 
-        #region Abstract
         public abstract void OnProlongedOutage( DateTime OutageStarted, DateTime NextAttempt );
-        #endregion
 
         protected RedisCacheProvider( string Host, int Port, string Password )
         {
@@ -92,10 +86,6 @@ namespace RedisCacheProvider
                 {
                     var value = client.Get<T>( key );
 
-                    // Add the key to the set so we can remove them
-                    // later using a wildcard search.
-                    client.AddItemToSet( KeySetUrn, key );
-
                     ClearOutage();
                     return value;
                 }
@@ -117,7 +107,7 @@ namespace RedisCacheProvider
             {
                 using( var client = ClientManager.GetClient() )
                 {
-                    if( client.ContainsKey( key ) )
+                    if( this.HasKey( key ) )
                     {
                         value = client.Get<T>( key );
                     }
@@ -179,7 +169,6 @@ namespace RedisCacheProvider
         public bool Forever<T>( string key, T value )
         {
             if( !Available ) return false;
-            if( value == null ) return false;
 
             try
             {
@@ -206,7 +195,6 @@ namespace RedisCacheProvider
         public bool Until<T>( string key, T value, DateTime utcUntil )
         {
             if( !Available ) return false;
-            if( value == null ) return false;
 
             try
             {
@@ -237,6 +225,8 @@ namespace RedisCacheProvider
 
         public int Remove( string keyPart )
         {
+            if( !Available ) return 0;
+
             var count = 0;
 
             try
@@ -257,6 +247,24 @@ namespace RedisCacheProvider
             }
 
             return count;
+        }
+
+        public bool HasKey( string key )
+        {
+            if( !Available ) return false;
+
+            try
+            {
+                using( var client = ClientManager.GetClient() )
+                {
+                    return client.SetContainsItem( KeySetUrn, key );
+                }
+            }
+            catch( Exception ex )
+            {
+                HandleException( ex );
+                return false;
+            }
         }
     }
 }

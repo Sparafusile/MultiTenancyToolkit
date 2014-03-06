@@ -22,7 +22,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlServerMultiTenantContext
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CacheProviders", "CacheProviders", "{E91A53DA-372C-45ED-A043-F0AE1D1A866E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RedisCacheProvider", "CacheProviders\RedisCacheProvider\RedisCacheProvider.csproj", "{24A09B7B-4319-48F7-9E29-404D3AD2D257}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RedisProvider", "CacheProviders\RedisCacheProvider\RedisProvider.csproj", "{24A09B7B-4319-48F7-9E29-404D3AD2D257}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{54666106-E968-4151-801F-F393F7E464F3}"
 EndProject

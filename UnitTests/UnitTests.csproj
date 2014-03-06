@@ -46,6 +46,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
   <Choose>
     <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
@@ -63,12 +64,13 @@
     <Compile Include="MultiTenancy\SingleSchemaContextTest.cs" />
     <Compile Include="PostgresMultiTenantContext\PostgresMultiTenantContextTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RedisCacheProvider\RedisCacheProviderTest.cs" />
     <Compile Include="SqlServerMultiTenantContext\SqlServerMultiTenantContextTest.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CacheProviders\RedisCacheProvider\RedisCacheProvider.csproj">
+    <ProjectReference Include="..\CacheProviders\RedisCacheProvider\RedisProvider.csproj">
       <Project>{24a09b7b-4319-48f7-9e29-404d3ad2d257}</Project>
-      <Name>RedisCacheProvider</Name>
+      <Name>RedisProvider</Name>
     </ProjectReference>
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{54666106-e968-4151-801f-f393f7e464f3}</Project>

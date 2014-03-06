@@ -134,5 +134,28 @@ namespace MultiTenancy
                 cmd.ExecuteNonQuery();
             }
         }
+
+        /// <summary>
+        /// Returns the IDbSet property associated to this context for the given type.
+        /// </summary>
+        /// <typeparam name="T">The type whos IDbSet to retrieve.</typeparam>
+        /// <returns>The IDbSet for the given type.</returns>
+        public IDbSet<T> GetDbSetForType<T>() where T : class
+        {
+            var p =
+                this.GetType().GetProperties()
+                .Where( m => m.PropertyType.IsGenericType )
+                .Where
+                (
+                    m => m.PropertyType.GetGenericTypeDefinition() == typeof( IDbSet<> )
+                      || m.PropertyType.GetGenericTypeDefinition() == typeof( DbSet<> )
+                      || m.PropertyType.GetGenericTypeDefinition() == typeof( FilteredDbSet<> )
+                )
+                .FirstOrDefault( m => m.PropertyType.GetGenericArguments()[0] == typeof( T ) );
+
+            if( p == null ) return null;
+
+            return p.GetValue( this ) as IDbSet<T>;
+        }
     }
 }

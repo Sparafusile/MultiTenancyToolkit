@@ -4,6 +4,11 @@ namespace MultiTenancy.Common
 {
     public class NullCacheProvider : ICacheProvider
     {
+        public bool HasValue( string key )
+        {
+            return false;
+        }
+
         public T Get<T>( string key )
         {
             return default( T );

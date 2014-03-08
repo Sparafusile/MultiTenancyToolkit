@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Web;
+using System.Linq;
+using System.Collections;
 using System.Web.Caching;
 using System.Collections.Generic;
 
@@ -21,10 +23,71 @@ namespace MvcMultiTenancy
             return HttpRuntime.Cache.Get( key );
         }
 
-        public T Get<T>( string key )
+        private static bool ForeverSelf<T>( string key, T value )
+        {
+            return UntilSelf( key, value, DateTime.Now.AddYears( 1 ) );
+        }
+
+        private static bool UntilSelf<T>( string key, T value, DateTime until )
+        {
+            try
+            {
+                HttpRuntime.Cache.Insert( key, value, null, until, Cache.NoSlidingExpiration, CacheItemPriority.Default, null );
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool SlidingSelf<T>( string key, T value, TimeSpan span )
+        {
+            try
+            {
+                HttpRuntime.Cache.Insert( key, value, null, Cache.NoAbsoluteExpiration, span, CacheItemPriority.Default, null );
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private T Get<T>( string key, DateTime? until, TimeSpan? span, Func<T> f )
         {
             var value = Get( key );
-            return value == null ? this.Backup.Get<T>( key ) : (T)value;
+
+            if( value == null )
+            {
+                value = this.Backup.Get( key, f );
+
+                if( until.HasValue )
+                {
+                    UntilSelf( key, value, until.Value );
+                }
+                else if( span.HasValue )
+                {
+                    SlidingSelf( key, value, span.Value );
+                }
+                else
+                {
+                    ForeverSelf( key, value );
+                }
+            }
+
+            return value == null ? default( T ) : (T)value;
+        }
+
+        public bool HasValue( string key )
+        {
+            return HttpRuntime.Cache.Cast<DictionaryEntry>()
+                .Any( m => m.Key.ToString().Equals( key ) );
+        }
+
+        public T Get<T>( string key )
+        {
+            return this.HasValue( key ) ? (T)HttpRuntime.Cache.Get( key ) : this.Backup.Get<T>( key );
         }
 
         public T Get<T>( string key, Func<T> f )
@@ -42,62 +105,19 @@ namespace MvcMultiTenancy
             return Get( key, null, span, f );
         }
 
-        private T Get<T>( string key, DateTime? until, TimeSpan? span, Func<T> f )
-        {
-            var value = Get( key );
-
-            if( value == null )
-            {
-                value = this.Backup.Get( key, f );
-
-                if( until.HasValue )
-                {
-                    Until( key, value, until.Value );
-                }
-                else if( span.HasValue )
-                {
-                    Sliding( key, value, span.Value );
-                }
-                else
-                {
-                    Forever( key, value );
-                }
-            }
-
-            return value == null ? default( T ) : (T)value;
-        }
-
         public bool Forever<T>( string key, T value )
         {
-            return Until( key, value, DateTime.Now.AddYears( 1 ) );
+            return ForeverSelf( key, value ) && this.Backup.Forever( key, value );
         }
 
         public bool Until<T>( string key, T value, DateTime until )
         {
-            try
-            {
-                HttpRuntime.Cache.Insert( key, value, null, until, Cache.NoSlidingExpiration, CacheItemPriority.Default, null );
-                this.Backup.Until( key, value, until );
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return UntilSelf( key, value, until ) && this.Backup.Until( key, value, until );
         }
 
         public bool Sliding<T>( string key, T value, TimeSpan span )
         {
-            try
-            {
-                HttpRuntime.Cache.Insert( key, value, null, Cache.NoAbsoluteExpiration, span, CacheItemPriority.Default, null );
-                this.Backup.Sliding( key, value, span );
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+            return SlidingSelf( key, value, span ) && this.Backup.Sliding( key, value, span );
         }
 
         public int Remove( string keyPart )

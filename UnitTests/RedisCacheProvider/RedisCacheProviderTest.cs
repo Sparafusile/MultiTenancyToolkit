@@ -1,15 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Data.Entity;
 using System.Data.SqlClient;
+using System.Linq.Expressions;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq.Expressions;
-using System.Runtime.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using MultiTenancy;
+using MvcMultiTenancy;
 using RedisProvider;
 using MultiTenancy.Common;
 using MultiTenancy.SqlServer;
@@ -162,7 +163,7 @@ namespace UnitTests.RedisCacheProviderTest
         public void CacheTest()
         {
             int id;
-            var cache = new UnitTestRedisCacheProvider();
+            var cache = new HttpCacheProvider( new UnitTestRedisCacheProvider() );
 
             using( var db = new UnitTestMsContext( "SqlServerContext", "Tenant10000" ) )
             {
@@ -206,12 +207,16 @@ namespace UnitTests.RedisCacheProviderTest
                 cache.Remove( key );
 
                 var location1 = db.Get<Location>( id, cache, m => m.Employees );
-                Assert.IsTrue( cache.HasKey( key + ":Employees" ) );
+                Assert.IsNotNull( location1 );
+                Assert.IsNotNull( location1.Employees );
+                Assert.AreEqual( location.ID, location1.ID );
+                Assert.AreEqual( location.Employees.Count, location1.Employees.Count );
             }
 
             using( var db = new UnitTestMsContext( "SqlServerContext", "Tenant10000" ) )
             {
                 var location = db.Get<Location>( id, cache, m => m.Employees );
+                Assert.IsNotNull( location );
                 Assert.IsNotNull( location.Employees );
                 Assert.AreEqual( 2, location.Employees.Count );
 

@@ -5,7 +5,7 @@ using ServiceStack.Redis;
 
 namespace RedisProvider
 {
-    public class RedisCacheProvider : ICacheProvider
+    public abstract class RedisCacheProvider : ICacheProvider
     {
         private const string KeySetUrn = "urn:rediscacheprovider:keyset";
         private IRedisClientsManager ClientManager { get; set; }
@@ -67,7 +67,7 @@ namespace RedisProvider
 
         private ICacheProvider Backup { get; set; }
 
-        public RedisCacheProvider( string Host, int Port, string Password, ICacheProvider backup = null )
+        protected RedisCacheProvider( string Host, int Port, string Password, ICacheProvider backup = null )
         {
             this.Backup = backup ?? new NullCacheProvider();
 
@@ -78,6 +78,81 @@ namespace RedisProvider
             catch
             {
                 NextAttempt = DateTime.UtcNow.AddYears( 1 );
+            }
+        }
+
+        private bool ForeverSelf<T>( string key, T value )
+        {
+            if( !Available ) return false;
+
+            try
+            {
+                using( var client = ClientManager.GetClient() )
+                {
+                    var typedClient = client.As<T>();
+                    typedClient.SetEntry( key, value );
+
+                    // Add the key to the set so we can remove them
+                    // later using a wildcard search.
+                    client.AddItemToSet( KeySetUrn, key );
+                }
+
+                ClearOutage();
+                return true;
+            }
+            catch( Exception ex )
+            {
+                HandleException( ex );
+                return false;
+            }
+        }
+
+        private bool UntilSelf<T>( string key, T value, DateTime until )
+        {
+            if( !Available ) return false;
+
+            try
+            {
+                using( var client = ClientManager.GetClient() )
+                {
+                    var typedClient = client.As<T>();
+                    typedClient.SetEntry( key, value, until.ToUniversalTime() - DateTime.UtcNow );
+
+                    // Add the key to the set so we can remove them
+                    // later using a wildcard search.
+                    client.AddItemToSet( KeySetUrn, key );
+                }
+
+                ClearOutage();
+                return true;
+            }
+            catch( Exception ex )
+            {
+                HandleException( ex );
+                return false;
+            }
+        }
+
+        private bool SlidingSelf<T>( string key, T value, TimeSpan span )
+        {
+            return false;
+        }
+
+        public bool HasValue( string key )
+        {
+            if( !Available ) return false;
+
+            try
+            {
+                using( var client = ClientManager.GetClient() )
+                {
+                    return client.SetContainsItem( KeySetUrn, key );
+                }
+            }
+            catch( Exception ex )
+            {
+                HandleException( ex );
+                return false;
             }
         }
 
@@ -113,7 +188,7 @@ namespace RedisProvider
                 {
                     T value;
 
-                    if( this.HasKey( key ) )
+                    if( this.HasValue( key ) )
                     {
                         value = client.Get<T>( key );
                     }
@@ -121,7 +196,7 @@ namespace RedisProvider
                     {
                         var tempF = f; f = null;
                         value = this.Backup.Get( key, tempF );
-                        Forever( key, value );
+                        ForeverSelf( key, value );
                     }
 
                     ClearOutage();
@@ -153,7 +228,7 @@ namespace RedisProvider
                     {
                         var tempF = f; f = null;
                         value = this.Backup.Get( key, until.ToUniversalTime(), tempF );
-                        Until( key, value, until );
+                        UntilSelf( key, value, until );
                     }
 
                     ClearOutage();
@@ -174,59 +249,17 @@ namespace RedisProvider
 
         public bool Forever<T>( string key, T value )
         {
-            if( !Available ) return this.Backup.Forever( key, value );
-
-            try
-            {
-                using( var client = ClientManager.GetClient() )
-                {
-                    var typedClient = client.As<T>();
-                    typedClient.SetEntry( key, value );
-
-                    // Add the key to the set so we can remove them
-                    // later using a wildcard search.
-                    client.AddItemToSet( KeySetUrn, key );
-                }
-
-                ClearOutage();
-            }
-            catch( Exception ex )
-            {
-                HandleException( ex );
-            }
-
-            return this.Backup.Forever( key, value );
+            return ForeverSelf( key, value ) && this.Backup.Forever( key, value );
         }
 
         public bool Until<T>( string key, T value, DateTime until )
         {
-            if( !Available ) return this.Backup.Until( key, value, until );
-
-            try
-            {
-                using( var client = ClientManager.GetClient() )
-                {
-                    var typedClient = client.As<T>();
-                    typedClient.SetEntry( key, value, until.ToUniversalTime() - DateTime.UtcNow );
-
-                    // Add the key to the set so we can remove them
-                    // later using a wildcard search.
-                    client.AddItemToSet( KeySetUrn, key );
-                }
-
-                ClearOutage();
-            }
-            catch( Exception ex )
-            {
-                HandleException( ex );
-            }
-
-            return this.Backup.Until( key, value, until );
+            return UntilSelf( key, value, until ) && this.Backup.Until( key, value, until );
         }
 
         public bool Sliding<T>( string key, T value, TimeSpan span )
         {
-            return this.Backup.Sliding( key, value, span );
+            return SlidingSelf( key, value, span ) && this.Backup.Sliding( key, value, span );
         }
 
         public int Remove( string keyPart )
@@ -255,24 +288,6 @@ namespace RedisProvider
             this.Backup.Remove( keyPart );
 
             return count;
-        }
-
-        public bool HasKey( string key )
-        {
-            if( !Available ) return false;
-
-            try
-            {
-                using( var client = ClientManager.GetClient() )
-                {
-                    return client.SetContainsItem( KeySetUrn, key );
-                }
-            }
-            catch( Exception ex )
-            {
-                HandleException( ex );
-                return false;
-            }
         }
     }
 }

@@ -4,6 +4,8 @@ namespace MultiTenancy.Common
 {
     public interface ICacheProvider
     {
+        bool HasValue( string key );
+
         T Get<T>( string key );
 
         T Get<T>( string key, Func<T> f );

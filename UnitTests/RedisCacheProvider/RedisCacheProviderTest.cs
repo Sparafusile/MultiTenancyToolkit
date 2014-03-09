@@ -10,8 +10,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using MultiTenancy;
-using MvcMultiTenancy;
 using RedisProvider;
+using MvcMultiTenancy;
 using MultiTenancy.Common;
 using MultiTenancy.SqlServer;
 

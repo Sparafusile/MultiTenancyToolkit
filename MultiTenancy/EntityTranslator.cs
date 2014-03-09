@@ -191,8 +191,12 @@ namespace MultiTenancy
                 from p in T.GetProperties()
 
                 // Only the properties that are a generic type of DbSet
-                where p.PropertyType.IsGenericType
-                    && p.PropertyType.GetGenericTypeDefinition() == typeof( DbSet<> )
+                where p.PropertyType.IsGenericType &&
+                (
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( DbSet<> ) ||
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( IDbSet<> ) ||
+                    p.PropertyType.GetGenericTypeDefinition() == typeof( FilteredDbSet<> )
+                )
 
                 // Get the type used to create the generic (T in DbSet<T>)
                 let e = p.PropertyType.GetGenericArguments()[0]
@@ -244,7 +248,7 @@ namespace MultiTenancy
         /// <returns>A list of PropertyInfo for the given entity.</returns>
         protected static IEnumerable<PropertyInfo> GetEntityProperties( Type t )
         {
-            return t.GetProperties().Where( m => m.CanWrite && m.GetAttribute<NotMappedAttribute>() == null && ( m.PropertyType.IsValueType || m.PropertyType == typeof( string ) ) );
+            return t.GetProperties().Where( m => m.CanWrite && m.GetAttribute<NotMappedAttribute>() == null && ( m.PropertyType.IsValueType || m.PropertyType == typeof( string ) || m.PropertyType == typeof( byte[] ) ) );
         }
 
         /// <summary>
@@ -391,7 +395,7 @@ namespace MultiTenancy
             var type = GetColumnType( P, out isNullable );
             var isRequired = P.GetAttribute<RequiredAttribute>() != null;
 
-            if( type.Name.Equals( "String" ) )
+            if( type.Name.Equals( "String" ) || type.Name.Equals( "Byte[]" ) )
             {
                 isNullable = !isRequired;
             }
@@ -679,7 +683,7 @@ namespace MultiTenancy
                                 string.Format( "CHARACTER VARYING ({0})", stringLength.MaximumLength );
 
                         case "Int32":
-                            return GetColumnName( P ).Equals( "ID" ) ? "BIGSERIAL" : "INTEGER";
+                            return GetColumnName( P ).Equals( "ID" ) ? "BIGSERIAL PRIMARY KEY" : "INTEGER";
 
                         case "DateTime": return "TIMESTAMP";
 

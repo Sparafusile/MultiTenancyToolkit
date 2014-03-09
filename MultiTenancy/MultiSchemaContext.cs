@@ -10,7 +10,7 @@ namespace MultiTenancy
 {
     public abstract class MultiSchemaContext : MultiTenantContext, IDbModelCacheKeyProvider
     {
-        protected string SchemaName { get; private set; }
+        protected string SchemaName { get; set; }
         public string CacheKey { get { return this.GetType().Name + "." + this.SchemaName; } }
 
         static MultiSchemaContext()

@@ -58,7 +58,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{54666106-e968-4151-801f-f393f7e464f3}</Project>
-      <Name>Common</Name>
+      <Name>Common %28MultiTenancyToolkit\Common%29</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

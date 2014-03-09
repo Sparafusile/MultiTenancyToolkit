@@ -74,7 +74,7 @@
     </ProjectReference>
     <ProjectReference Include="..\Common\Common.csproj">
       <Project>{54666106-e968-4151-801f-f393f7e464f3}</Project>
-      <Name>Common</Name>
+      <Name>Common %28MultiTenancyToolkit\Common%29</Name>
     </ProjectReference>
     <ProjectReference Include="..\DbContexts\PostgresMultiTenantContext\PostgresMultiTenantContext.csproj">
       <Project>{cba5bdb4-a824-45b0-a65c-d7a0a5d2a7b6}</Project>
